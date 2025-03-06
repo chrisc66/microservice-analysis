@@ -1,0 +1,49 @@
+Processing repositories:  98%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▉   | 40/41 [03:59<00:05,  5.98s/it]
+
+Collected metrics:
+                     owner                             repo  stars  contributors  avg_resolution_time
+0                     dapr                             dapr  24458           280          2392.712479
+1            conductor-oss                        conductor  20376           271          3030.622222
+2                   apache                       skywalking  24142           388          1399.654272
+3                 jhipster               generator-jhipster  21769           299           596.158077
+4                zeromicro                          go-zero  30273           273            36.156722
+5                  Netflix                            genie   1726            33          3805.403580
+6                   dotnet                            eShop   7329            50          1408.839823
+7                   dotnet                       aspnetcore  36197           340          6939.968830
+8                    istio                            istio  36547           363          2417.569738
+9            jaegertracing                           jaeger  20979           371          4294.656500
+10                 openebs                          openebs   9190           191          5321.842365
+11               spinnaker                        spinnaker   9420           113          2521.709186
+12               getsentry                           sentry  40171           337          3286.927353
+13                 nytimes                            gizmo   3768            46          3228.172790
+14               sitewhere                        sitewhere   1022            15          1359.232296
+15                magda-io                            magda    527            29          1600.704387
+16            apolloconfig                           apollo  29355           162                  NaN
+17     GoogleCloudPlatform               microservices-demo  17606           122          5127.995301
+18                 instana                       robot-shop    894            19          1107.166845
+19                  paulc4               microservices-demo    897             4          5310.071667
+20      microservices-demo                            carts     42            12          1455.544537
+21              begmaroman             go-micro-boilerplate    269             1          1145.320111
+22             mehdihadeli      food-delivery-microservices    845             6           742.863098
+23             mehdihadeli   game-leaderboard-microservices     51             1                  NaN
+24                 acmeair                          acmeair    136             2          6465.890833
+25           venkataravuri  e-commerce-microservices-sample    277             1             7.381667
+26                  digota                           digota    511             1          4401.712292
+27     dotnet-architecture                eShopOnContainers  24522           168          2115.862532
+28  microservices-patterns                 ftgo-application   3517             3           243.850630
+29         TheDigitalNinja             million-song-library      2            11                  NaN
+30                idugalic                    micro-company    351             4          2244.323194
+31                  aspnet                       MusicStore   1300            48          2558.640417
+32                   sqshq                     PiggyMetrics  13394            12                  NaN
+33                 EdwinVW                          pitstop   1110            17           692.311006
+34                  JoeCao                            qbike    506             1                  NaN
+35        spring-petclinic   spring-petclinic-microservices   1760            38          3857.172734
+36                Staffjoy                               V2   1672             1                  NaN
+37               LandRover                       StaffjoyV2    145             1           981.607153
+38       DescartesResearch                         TeaStore    127            19          1207.292064
+39              FudanSELab                     train-ticket    745            18          7505.408705
+
+Saved metrics to github_metrics_20250305_001226.csv
+/home/chris/microservice-analysis/script_3.py:215: UserWarning: Tight layout not applied. The bottom and top margins cannot be made large enough to accommodate all Axes decorations.
+  plt.tight_layout()
+Generated visualization: github_stars_comparison.png
