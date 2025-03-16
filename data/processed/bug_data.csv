@@ -1131,3 +1131,7 @@ pandas-dev/pandas,60498,BUG: MultiIndex alignment solved for rows but not column
 pandas-dev/pandas,60488,BUG: no type provided for pandas.api.extensions.no_default,2024-12-04T00:50:30+00:00,2025-01-14T01:56:33+00:00,60696,2025-01-14T01:56:32+00:00,0,2,1,985.1005555555555,"['Enhancement', 'Typing']"
 pandas-dev/pandas,40139,ENH:AttributeError: 'SeriesGroupBy' object has no attribute 'kurtosis',2021-03-01T09:54:02+00:00,2025-01-10T17:42:37+00:00,60433,2025-01-10T17:42:36+00:00,0,15,3,33871.80944444444,"['Enhancement', 'Groupby', 'good first issue']"
 pandas-dev/pandas,60688,BUG: ValueError in pandas.DataFrame.replace with regex on single-row DataFrame with None/NaN,2025-01-09T21:51:42+00:00,2025-01-10T17:17:22+00:00,60691,2025-01-10T17:17:20+00:00,0,3,1,19.427222222222223,"['Bug', 'Missing-data', 'replace']"
+LeCoupa/awesome-cheatsheets,400,Add Comprehensive Cirq Framework Cheatsheet with Detailed Documentation,2024-12-11T11:21:24+00:00,2025-03-06T08:33:29+00:00,401,,0,1,1,2037.201388888889,[]
+LeCoupa/awesome-cheatsheets,3,Awesome changes,2018-02-04T16:21:12+00:00,2018-02-04T16:29:37+00:00,315,,0,0,1,0.14027777777777778,[]
+LeCoupa/awesome-cheatsheets,2,fix a typo,2018-02-04T01:35:48+00:00,2018-02-04T02:18:08+00:00,315,,0,0,1,0.7055555555555556,[]
+LeCoupa/awesome-cheatsheets,1,incorrect GETRANGE description,2018-01-26T07:51:37+00:00,2018-01-27T00:07:04+00:00,315,,0,0,1,16.2575,[]
