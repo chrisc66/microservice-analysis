@@ -71,7 +71,7 @@ This script will:
 
 2. Collect bug data:
 ```bash
-python src/bug_data_collector.py
+python src/new_bug_collector.py
 ```
 This will collect bug-related data and save it to `data/processed/bug_data.csv`.
 
