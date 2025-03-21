@@ -1,5 +1,6 @@
 """
 Script to collect bug-related data from microservice repositories.
+Only collects bugs that have application code or configuration file changes.
 """
 
 import os
@@ -325,12 +326,12 @@ class BugDataCollector:
                 
                 # Get closed issues
                 issues = repo.get_issues(state='closed', sort='updated', direction='desc')
-                total_issues = min(issues.totalCount, 500)  # Process up to 500 closed issues
+                total_issues = min(issues.totalCount, 1000)  # Process up to 1000 closed issues
                 logger.info(f"Found {total_issues} closed issues in {repo_name}")
                 
                 with tqdm(total=total_issues, desc=f"Processing {repo_name}", leave=True) as pbar:
                     for i, issue in enumerate(issues):
-                        if i >= 500:  # Stop after 500 issues
+                        if i >= 1000:  # Stop after 1000 issues
                             break
                             
                         try:
@@ -343,40 +344,11 @@ class BugDataCollector:
                                 pbar.update(1)
                                 continue
                             
-                            bugs_found += 1
-                            logger.info(f"Found bug in {repo_name}: Issue #{issue.number} - {issue.title}")
-                            
-                            # Create base bug entry
-                            bug_entry = {
-                                'repo_name': repo_name,
-                                'issue_number': issue.number,
-                                'issue_title': issue.title or "NA",
-                                'issue_body': issue.body or "NA",
-                                'issue_created_at': issue.created_at.isoformat() if issue.created_at else "NA",
-                                'issue_closed_at': issue.closed_at.isoformat() if issue.closed_at else "NA",
-                                'issue_comments_count': issue.comments or 0,
-                                'issue_url': issue.html_url or "NA",
-                                'pr_number': "NA",
-                                'pr_merged_at': "NA",
-                                'pr_url': "NA",
-                                'config_files_changed': 0,
-                                'app_code_files_changed': 0,
-                                'other_files_changed': 0,
-                                'total_files_changed': 0,
-                                'lines_added': 0,
-                                'lines_deleted': 0,
-                                'config_files_lines_changed': 0,
-                                'app_code_files_lines_changed': 0,
-                                'resolution_time_hours': self.get_bug_resolution_time(issue) or "NA",
-                                'labels': [label.name for label in issue.labels] if issue.labels else ["NA"],
-                                'has_config_changes': False,
-                                'has_code_changes': False,
-                                'bug_severity': self.get_bug_severity(issue),
-                                'bug_type': self.get_bug_type(issue),
-                                'changed_files': [],
-                                'services_affected': ["NA"],
-                                'is_cross_service_bug': False
-                            }
+                            # Try to find associated PR and check file changes
+                            has_relevant_changes = False
+                            associated_pr = None
+                            file_changes = {'config': 0, 'app_code': 0, 'other': 0}
+                            changed_files = []
                             
                             # Try to find associated PR
                             max_retries = 3
@@ -384,102 +356,83 @@ class BugDataCollector:
                                 try:
                                     associated_pr = self.find_associated_pr(repo, issue.number)
                                     if associated_pr:
-                                        file_changes = self.analyze_pr_files(associated_pr)
-                                        changed_files = []
-                                        total_lines_added = 0
-                                        total_lines_deleted = 0
-                                        config_lines_changed = 0
-                                        code_lines_changed = 0
-                                        services_affected = set()
-                                        
-                                        # Analyze each changed file
+                                        # Analyze files to check for app or config changes
                                         for file in associated_pr.get_files():
+                                            file_type = self.get_file_category(file.filename)
+                                            file_changes[file_type] += 1
                                             changed_files.append({
-                                                'filename': file.filename or "NA",
-                                                'lines_added': file.additions or 0,
-                                                'lines_deleted': file.deletions or 0,
-                                                'file_type': self.get_file_category(file.filename) or "NA"
+                                                'filename': file.filename,
+                                                'lines_added': file.additions,
+                                                'lines_deleted': file.deletions,
+                                                'file_type': file_type
                                             })
                                             
-                                            total_lines_added += file.additions or 0
-                                            total_lines_deleted += file.deletions or 0
-                                            
-                                            # Track lines changed by file type
-                                            if self.get_file_category(file.filename) == 'config':
-                                                config_lines_changed += (file.additions or 0) + (file.deletions or 0)
-                                            elif self.get_file_category(file.filename) == 'app_code':
-                                                code_lines_changed += (file.additions or 0) + (file.deletions or 0)
-                                                
-                                            # Try to identify affected service from file path
-                                            service = self.identify_service(file.filename)
-                                            if service:
-                                                services_affected.add(service)
+                                            # Check if we have app or config changes
+                                            if file_type in ['config', 'app_code']:
+                                                has_relevant_changes = True
                                         
-                                        bug_entry.update({
-                                            'pr_number': associated_pr.number,
-                                            'pr_merged_at': associated_pr.merged_at.isoformat() if associated_pr.merged_at else "NA",
-                                            'pr_url': associated_pr.html_url or "NA",
-                                            'config_files_changed': file_changes.get('config', 0),
-                                            'app_code_files_changed': file_changes.get('app_code', 0),
-                                            'other_files_changed': file_changes.get('other', 0),
-                                            'total_files_changed': len(changed_files),
-                                            'lines_added': total_lines_added,
-                                            'lines_deleted': total_lines_deleted,
-                                            'config_files_lines_changed': config_lines_changed,
-                                            'app_code_files_lines_changed': code_lines_changed,
-                                            'has_config_changes': file_changes.get('config', 0) > 0,
-                                            'has_code_changes': file_changes.get('app_code', 0) > 0,
-                                            'changed_files': changed_files or [],
-                                            'services_affected': list(services_affected) if services_affected else ["NA"],
-                                            'is_cross_service_bug': len(services_affected) > 1,
-                                            'resolution_time_hours': self.get_bug_resolution_time(issue, associated_pr) or "NA"
-                                        })
-                                        logger.info(f"Found associated PR #{associated_pr.number} for issue #{issue.number}")
-                                    break
+                                        break
                                 except RateLimitExceededException:
                                     logger.warning(f"Rate limit hit, rotating token for {repo_name}")
-                                    github = self.token_manager.get_client()  # Get new client
+                                    github = self.token_manager.get_client()
                                     repo = github.get_repo(repo_name)
                                     time.sleep(1)
                             
+                            # Skip if no app or config changes
+                            if not has_relevant_changes:
+                                pbar.update(1)
+                                continue
+                            
+                            bugs_found += 1
+                            logger.info(f"Found bug with app/config changes in {repo_name}: Issue #{issue.number} - {issue.title}")
+                            
+                            # Create bug entry
+                            bug_entry = {
+                                'repo_name': repo_name,
+                                'issue_number': issue.number,
+                                'issue_title': issue.title or "NA",
+                                'issue_body': (issue.body or "NA").replace('\n', ' ').replace('\r', ''),
+                                'issue_created_at': issue.created_at.isoformat() if issue.created_at else "NA",
+                                'issue_closed_at': issue.closed_at.isoformat() if issue.closed_at else "NA",
+                                'issue_comments_count': issue.comments or 0,
+                                'issue_url': issue.html_url or "NA",
+                                'pr_number': associated_pr.number if associated_pr else "NA",
+                                'pr_merged_at': associated_pr.merged_at.isoformat() if associated_pr and associated_pr.merged_at else "NA",
+                                'pr_url': associated_pr.html_url if associated_pr else "NA",
+                                'config_files_changed': file_changes['config'],
+                                'app_code_files_changed': file_changes['app_code'],
+                                'other_files_changed': file_changes['other'],
+                                'total_files_changed': len(changed_files),
+                                'lines_added': sum(f['lines_added'] for f in changed_files),
+                                'lines_deleted': sum(f['lines_deleted'] for f in changed_files),
+                                'config_files_lines_changed': sum((f['lines_added'] + f['lines_deleted']) 
+                                                               for f in changed_files if f['file_type'] == 'config'),
+                                'app_code_files_lines_changed': sum((f['lines_added'] + f['lines_deleted']) 
+                                                                 for f in changed_files if f['file_type'] == 'app_code'),
+                                'resolution_time_hours': self.get_bug_resolution_time(issue, associated_pr) or "NA",
+                                'labels': [label.name for label in issue.labels] if issue.labels else ["NA"],
+                                'has_config_changes': file_changes['config'] > 0,
+                                'has_code_changes': file_changes['app_code'] > 0,
+                                'bug_severity': self.get_bug_severity(issue),
+                                'bug_type': self.get_bug_type(issue),
+                                'changed_files': changed_files,
+                                'services_affected': [self.identify_service(f['filename']) for f in changed_files if self.identify_service(f['filename'])],
+                                'is_cross_service_bug': len(set(self.identify_service(f['filename']) 
+                                                             for f in changed_files 
+                                                             if self.identify_service(f['filename']))) > 1
+                            }
+
                             # Save bug immediately
                             with self._data_lock:
-                                # Prepare the entry for CSV by converting complex types to strings
-                                csv_entry = {
-                                    'repo_name': repo_name,
-                                    'issue_number': issue.number,
-                                    'issue_title': issue.title or "NA",
-                                    'issue_body': (issue.body or "NA").replace('\n', ' ').replace('\r', ''),  # Remove newlines
-                                    'issue_created_at': issue.created_at.isoformat() if issue.created_at else "NA",
-                                    'issue_closed_at': issue.closed_at.isoformat() if issue.closed_at else "NA",
-                                    'issue_comments_count': issue.comments or 0,
-                                    'issue_url': issue.html_url or "NA",
-                                    'pr_number': bug_entry['pr_number'],
-                                    'pr_merged_at': bug_entry['pr_merged_at'],
-                                    'pr_url': bug_entry['pr_url'],
-                                    'config_files_changed': bug_entry['config_files_changed'],
-                                    'app_code_files_changed': bug_entry['app_code_files_changed'],
-                                    'other_files_changed': bug_entry['other_files_changed'],
-                                    'total_files_changed': bug_entry['total_files_changed'],
-                                    'lines_added': bug_entry['lines_added'],
-                                    'lines_deleted': bug_entry['lines_deleted'],
-                                    'config_files_lines_changed': bug_entry['config_files_lines_changed'],
-                                    'app_code_files_lines_changed': bug_entry['app_code_files_lines_changed'],
-                                    'resolution_time_hours': bug_entry['resolution_time_hours'],
-                                    'labels': ';'.join(str(label) for label in bug_entry['labels']),  # Convert list to string
-                                    'has_config_changes': str(bug_entry['has_config_changes']),
-                                    'has_code_changes': str(bug_entry['has_code_changes']),
-                                    'bug_severity': bug_entry['bug_severity'],
-                                    'bug_type': bug_entry['bug_type'],
-                                    'changed_files': json.dumps(bug_entry['changed_files']),  # Convert list to JSON string
-                                    'services_affected': ';'.join(str(svc) for svc in bug_entry['services_affected']),
-                                    'is_cross_service_bug': str(bug_entry['is_cross_service_bug'])
-                                }
+                                # Convert complex types to strings for CSV
+                                csv_entry = bug_entry.copy()
+                                csv_entry['labels'] = ';'.join(str(label) for label in csv_entry['labels'])
+                                csv_entry['changed_files'] = json.dumps(csv_entry['changed_files'])
+                                csv_entry['services_affected'] = ';'.join(str(svc) for svc in csv_entry['services_affected']) if csv_entry['services_affected'] else "NA"
+                                csv_entry['has_config_changes'] = str(csv_entry['has_config_changes'])
+                                csv_entry['has_code_changes'] = str(csv_entry['has_code_changes'])
+                                csv_entry['is_cross_service_bug'] = str(csv_entry['is_cross_service_bug'])
 
-                                # Save the processed entry
-                                self.bug_data.append(bug_entry)  # Keep original for memory
-                                
-                                # Save to CSV
                                 try:
                                     df = pd.DataFrame([csv_entry])
                                     if os.path.exists(output_file):
@@ -489,22 +442,6 @@ class BugDataCollector:
                                     logger.info(f"Successfully saved bug #{issue.number} from {repo_name} to CSV")
                                 except Exception as e:
                                     logger.error(f"Error saving to CSV: {str(e)}")
-                                    # Try to save with minimal columns if full save fails
-                                    minimal_entry = {
-                                        'repo_name': repo_name,
-                                        'issue_number': issue.number,
-                                        'issue_title': (issue.title or "NA").replace('\n', ' ').replace('\r', ''),
-                                        'resolution_time_hours': bug_entry['resolution_time_hours']
-                                    }
-                                    pd.DataFrame([minimal_entry]).to_csv(
-                                        output_file,
-                                        mode='a',
-                                        header=not os.path.exists(output_file),
-                                        index=False,
-                                        escapechar='\\',
-                                        quoting=csv.QUOTE_ALL
-                                    )
-                                    logger.info(f"Saved minimal bug data for #{issue.number} from {repo_name}")
                             
                             batch_bugs.append(bug_entry)
                             pbar.set_postfix({'bugs': len(batch_bugs), 'saved': True})
@@ -515,7 +452,7 @@ class BugDataCollector:
                             pbar.update(1)
                             continue
                 
-                logger.info(f"Repository {repo_name} completed: {bugs_found} bugs found out of {issues_processed} issues processed")
+                logger.info(f"Repository {repo_name} completed: {bugs_found} bugs with app/config changes found out of {issues_processed} issues processed")
                 
         except Exception as e:
             logger.error(f"Error processing repository {repo_name}: {str(e)}")
